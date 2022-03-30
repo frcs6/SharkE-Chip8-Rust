@@ -1,0 +1,60 @@
+{
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'chip8'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=chip8"
+                ],
+                "filter": {
+                    "name": "chip8",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'sharke-chip8'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=sharke-chip8",
+                    "--package=sharke-chip8"
+                ],
+                "filter": {
+                    "name": "sharke-chip8",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'sharke-chip8'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=sharke-chip8",
+                    "--package=sharke-chip8"
+                ],
+                "filter": {
+                    "name": "sharke-chip8",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
