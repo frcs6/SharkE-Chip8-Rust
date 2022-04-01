@@ -1,38 +1,41 @@
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::time::Duration;
 
 const SYNC_DURATION: Duration = Duration::from_secs(1);
 
 #[derive(Copy, Clone)]
-struct Frequency {
+pub struct Frequency {
     value: f64,
     divider: f64,
 }
 
 impl Frequency {
-    fn new(frequency: f64, divider: f64) -> Self {
+    pub fn new(frequency: f64, divider: f64) -> Self {
         return Self {
             value: frequency,
             divider: divider,
         };
     }
 
-    fn get_sub_frequency(&self, frequency: f64, divider: f64) -> Self {
+    pub fn get_sub_frequency(&self, frequency: f64, divider: f64) -> Self {
         return Frequency::new(frequency, divider * self.value / frequency);
     }
 }
 
-trait Processor {
+pub trait Processor {
     fn execute(&mut self) -> u8;
+    fn reset(&mut self);
 }
 
-struct Thread {
+pub struct Thread {
     clock: f64,
     frequency: Frequency,
-    processor: Box<dyn Processor>,
+    processor: Rc<RefCell<dyn Processor>>,
 }
 
 impl Thread {
-    fn new(frequency: Frequency, processor: Box<dyn Processor>) -> Self {
+    pub fn new(frequency: Frequency, processor: Rc<RefCell<dyn Processor>>) -> Self {
         return Self {
             clock: 0.0,
             frequency: frequency,
@@ -41,11 +44,12 @@ impl Thread {
     }
 
     fn tick(&mut self) {
-        let tick = self.processor.execute();
+        let tick = self.processor.borrow_mut().execute();
         self.clock += tick as f64 * self.frequency.divider;
     }
 
     fn reset(&mut self) {
+        self.processor.borrow_mut().reset();
         self.clock = 0.0;
     }
 
@@ -54,7 +58,7 @@ impl Thread {
     }
 }
 
-struct ThreadRunner {
+pub struct ThreadRunner {
     clock: f64,
     elapsed: Duration,
     incomplete_tick: f64,
@@ -63,7 +67,7 @@ struct ThreadRunner {
 }
 
 impl ThreadRunner {
-    fn new(frequency: Frequency, threads: Vec<Thread>) -> Self {
+    pub fn new(frequency: Frequency, threads: Vec<Thread>) -> Self {
         return Self {
             clock: 0.0,
             elapsed: Duration::ZERO,
@@ -73,7 +77,7 @@ impl ThreadRunner {
         };
     }
 
-    fn tick(&mut self, elapsed: Duration) {
+    pub fn tick(&mut self, elapsed: Duration) {
         self.incomplete_tick += self.frequency.value * elapsed.as_secs_f64();
         let complete_tick_f64 = self.incomplete_tick.trunc();
         self.incomplete_tick -= complete_tick_f64;
@@ -116,7 +120,7 @@ impl ThreadRunner {
         self.clock = 0.0;
     }
 
-    fn reset(&mut self) {
+    pub fn reset(&mut self) {
         self.elapsed = Duration::ZERO;
         self.incomplete_tick = 0.0;
         for thread in self.threads.iter_mut() {
@@ -154,52 +158,53 @@ mod thread_tests {
     use super::Processor;
     use super::Thread;
     use super::ThreadRunner;
+    use std::cell::RefCell;
+    use std::rc::Rc;
     use std::time::Duration;
 
     const EXECUTE_STEP: u8 = 2;
 
-    static mut EXECUTE_CALL_COUNT: u8 = 0;
-
-    struct FakeProcessor {}
+    struct FakeProcessor {
+        execute_call_count: u8,
+    }
 
     impl FakeProcessor {
         fn new() -> Self {
-            unsafe {
-                EXECUTE_CALL_COUNT = 0;
-            }
-            return Self {};
+            return Self {
+                execute_call_count: 0,
+            };
         }
     }
 
     impl Processor for FakeProcessor {
         fn execute(&mut self) -> u8 {
-            unsafe {
-                EXECUTE_CALL_COUNT += 1;
-            }
+            self.execute_call_count += 1;
             return EXECUTE_STEP;
         }
-    }
 
-    fn new_fake_thread(frequency: Frequency) -> Thread {
-        let processor = Box::new(FakeProcessor::new());
-        return Thread::new(frequency, processor);
+        fn reset(&mut self) {
+            self.execute_call_count = 0;
+        }
     }
 
     #[test]
     fn given_thread_when_tick_should_execute() {
         let frequency: Frequency = Frequency::new(500.0, 4.0);
-        let mut thread = new_fake_thread(frequency);
+        let processor = Rc::new(RefCell::new(FakeProcessor::new()));
+        let mut thread = Thread::new(frequency, processor.clone());
+
         thread.tick();
-        unsafe {
-            assert_eq!(EXECUTE_CALL_COUNT, 1);
-        }
+
+        assert_eq!(processor.borrow().execute_call_count, 1);
     }
 
     #[test]
     fn given_thread_when_tick_should_inc_clock() {
         let frequency: Frequency = Frequency::new(500.0, 4.0);
-        let mut thread = new_fake_thread(frequency);
+        let processor = Rc::new(RefCell::new(FakeProcessor::new()));
+        let mut thread = Thread::new(frequency, processor);
         let expected_clock = EXECUTE_STEP as f64 * frequency.divider;
+
         thread.tick();
 
         assert_eq!(thread.clock, expected_clock);
@@ -208,8 +213,10 @@ mod thread_tests {
     #[test]
     fn given_thread_when_reset_should_reset_state() {
         let frequency: Frequency = Frequency::new(500.0, 4.0);
-        let mut thread = new_fake_thread(frequency);
+        let processor = Rc::new(RefCell::new(FakeProcessor::new()));
+        let mut thread = Thread::new(frequency, processor);
         thread.tick();
+
         thread.reset();
 
         assert_eq!(thread.clock, 0.0);
@@ -220,7 +227,8 @@ mod thread_tests {
         let frequency: Frequency = Frequency::new(500.0, 4.0);
         let main_clock = 50.0;
         let expected_clock = EXECUTE_STEP as f64 * frequency.divider - main_clock;
-        let mut thread = new_fake_thread(frequency);
+        let processor = Rc::new(RefCell::new(FakeProcessor::new()));
+        let mut thread = Thread::new(frequency, processor);
         thread.tick();
 
         thread.synchronize_clock(main_clock);
@@ -247,7 +255,10 @@ mod thread_tests {
         let sub_frequency = frequency.get_sub_frequency(50.0, 1.0);
         let mut runner = ThreadRunner::new(
             frequency,
-            vec![new_fake_thread(frequency), new_fake_thread(sub_frequency)],
+            vec![
+                Thread::new(frequency, Rc::new(RefCell::new(FakeProcessor::new()))),
+                Thread::new(sub_frequency, Rc::new(RefCell::new(FakeProcessor::new()))),
+            ],
         );
         let expected_tick1 = 6.0;
         let expected_tick2 = 2.0;
@@ -267,7 +278,10 @@ mod thread_tests {
         let sub_frequency = frequency.get_sub_frequency(50.0, 1.0);
         let mut runner = ThreadRunner::new(
             frequency,
-            vec![new_fake_thread(frequency), new_fake_thread(sub_frequency)],
+            vec![
+                Thread::new(frequency, Rc::new(RefCell::new(FakeProcessor::new()))),
+                Thread::new(sub_frequency, Rc::new(RefCell::new(FakeProcessor::new()))),
+            ],
         );
         let duration_secs = 5.0 / frequency.value;
         runner.tick(Duration::from_secs_f64(duration_secs));
@@ -284,7 +298,10 @@ mod thread_tests {
         let sub_frequency = frequency.get_sub_frequency(50.0, 1.0);
         let mut runner = ThreadRunner::new(
             frequency,
-            vec![new_fake_thread(frequency), new_fake_thread(sub_frequency)],
+            vec![
+                Thread::new(frequency, Rc::new(RefCell::new(FakeProcessor::new()))),
+                Thread::new(sub_frequency, Rc::new(RefCell::new(FakeProcessor::new()))),
+            ],
         );
 
         runner.tick(Duration::from_secs(1));

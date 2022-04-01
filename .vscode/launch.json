@@ -17,7 +17,26 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}/chip8"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'cpu_test'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=cpu_test",
+                    "--package=chip8"
+                ],
+                "filter": {
+                    "name": "cpu_test",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}/chip8"
         },
         {
             "type": "lldb",
@@ -35,7 +54,7 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}/sharke-chip8"
         },
         {
             "type": "lldb",
@@ -54,7 +73,7 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}/sharke-chip8"
         }
     ]
 }
