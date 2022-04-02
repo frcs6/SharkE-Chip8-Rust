@@ -1,5 +1,7 @@
-use super::drivers::*;
+use super::driver::Driver;
 use super::threading::Processor;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 const BEEP_FREQUENCY: u16 = 800;
 
@@ -30,20 +32,22 @@ pub struct SoundTimer {
     beep: bool,
     pub cpu_timer: CpuTimer,
     frequency: f64,
+    driver: Rc<RefCell<dyn Driver>>,
 }
 
 impl SoundTimer {
-    pub fn new(frequency: f64) -> Self {
+    pub fn new(frequency: f64, driver: Rc<RefCell<dyn Driver>>) -> Self {
         return Self {
             beep: false,
             cpu_timer: CpuTimer::new(),
             frequency: frequency,
+            driver: driver,
         };
     }
 
     fn do_beep(&self) {
         let duration = 1000.0 * self.cpu_timer.value as f64 / self.frequency;
-        sound_do_beep(BEEP_FREQUENCY, duration);
+        self.driver.borrow_mut().sound_do_beep(BEEP_FREQUENCY, duration);
     }
 }
 

@@ -1,4 +1,6 @@
+use chip8::constants::*;
 use chip8::cpu::*;
+use chip8::driver::*;
 use chip8::threading::*;
 use chip8::timers::*;
 use std::cell::RefCell;
@@ -11,14 +13,42 @@ use test_case::test_case;
 const CPU_FREQ: f64 = 500.0;
 const TIMER_FREQ: f64 = 60.0;
 
+struct FakeDriver {}
+
+impl FakeDriver {
+    fn new() -> Self {
+        return Self {};
+    }
+}
+
+impl Driver for FakeDriver {
+    fn sound_do_beep(&mut self, frequency: u16, duration: f64) {}
+
+    fn video_fill_buffer(&mut self, display: &Vec<Vec<usize>>) {}
+
+    fn input_is_key_down(&mut self, key: u8) -> bool {
+        return false;
+    }
+
+    fn input_is_key_up(&mut self, key: u8) -> bool {
+        return true;
+    }
+
+    fn input_is_any_key_down(&mut self, key: &mut u8) -> bool {
+        return false;
+    }
+}
+
 #[test_case("../test_roms/c8_test.c8" ,"../test_roms/c8_test.json" ; "c8_test")]
 #[test_case("../test_roms/test_opcode.ch8" ,"../test_roms/test_opcode.json" ; "test_opcode")]
 fn given_test_rom_when_tick_should_wrk(rom_path: &str, buffer_path: &str) {
+    let driver = Rc::new(RefCell::new(FakeDriver::new()));
     let delay_timer = Rc::new(RefCell::new(CpuTimer::new()));
-    let sound_timer = Rc::new(RefCell::new(SoundTimer::new(TIMER_FREQ)));
+    let sound_timer = Rc::new(RefCell::new(SoundTimer::new(TIMER_FREQ, driver.clone())));
     let cpu = Rc::new(RefCell::new(Cpu::new(
         delay_timer.clone(),
         sound_timer.clone(),
+        driver.clone(),
     )));
 
     let rom: Vec<u8> = read(rom_path).unwrap();
@@ -36,8 +66,6 @@ fn given_test_rom_when_tick_should_wrk(rom_path: &str, buffer_path: &str) {
     );
     runner.reset();
 
-    let x_size: usize = 64;
-    let y_size: usize = 32;
     let buffer_content = read_to_string(buffer_path).unwrap();
     let buffer_data: Vec<usize> = serde_json::from_str(&buffer_content).unwrap();
 
@@ -45,8 +73,8 @@ fn given_test_rom_when_tick_should_wrk(rom_path: &str, buffer_path: &str) {
 
     let mut index = 0;
     let mut test_ok = true;
-    for y in 0..y_size {
-        for x in 0..x_size {
+    for y in 0..Y_SIZE {
+        for x in 0..X_SIZE {
             if cpu.borrow().display[x][y] == 1 {
                 print!("+",);
             } else {

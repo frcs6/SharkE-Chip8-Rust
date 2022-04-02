@@ -1,4 +1,5 @@
-use super::drivers::*;
+use super::constants::*;
+use super::driver::Driver;
 use super::threading::Processor;
 use super::timers::*;
 use std::cell::RefCell;
@@ -25,8 +26,6 @@ const FONTS: [u8; 80] = [
 
 const KB: usize = 1024;
 const V_SIZE: usize = 16;
-const X_SIZE: usize = 64;
-const Y_SIZE: usize = 32;
 const STACK_SIZE: usize = 16;
 const MEMORY_SIZE: usize = 4 * KB;
 const PROGRAM_START: usize = 0x200;
@@ -41,12 +40,17 @@ pub struct Cpu {
     memory: Vec<u8>,
     delay_timer: Rc<RefCell<CpuTimer>>,
     sound_timer: Rc<RefCell<SoundTimer>>,
+    driver: Rc<RefCell<dyn Driver>>,
     current_opcode: u16,
     rom: Vec<u8>,
 }
 
 impl Cpu {
-    pub fn new(delay_timer: Rc<RefCell<CpuTimer>>, sound_timer: Rc<RefCell<SoundTimer>>) -> Self {
+    pub fn new(
+        delay_timer: Rc<RefCell<CpuTimer>>,
+        sound_timer: Rc<RefCell<SoundTimer>>,
+        driver: Rc<RefCell<dyn Driver>>,
+    ) -> Self {
         let mut cpu = Self {
             i: 0,
             v: vec![0; V_SIZE],
@@ -57,6 +61,7 @@ impl Cpu {
             memory: vec![0; MEMORY_SIZE],
             delay_timer: delay_timer,
             sound_timer: sound_timer,
+            driver: driver,
             current_opcode: 0,
             rom: Vec::new(),
         };
@@ -261,7 +266,7 @@ impl Cpu {
             }
         }
 
-        video_fill_buffer(&self.display);
+        self.driver.borrow_mut().video_fill_buffer(&self.display);
     }
 
     fn instructions_e(&mut self) {
@@ -271,12 +276,12 @@ impl Cpu {
 
         match nn {
             0x9E => {
-                if input_is_key_down(vx) {
+                if self.driver.borrow_mut().input_is_key_down(vx) {
                     self.program_counter += 2;
                 }
             }
             0xA1 => {
-                if input_is_key_up(vx) {
+                if self.driver.borrow_mut().input_is_key_up(vx) {
                     self.program_counter += 2;
                 }
             }
@@ -292,7 +297,7 @@ impl Cpu {
             0x07 => self.v[x] = self.delay_timer.borrow().value,
             0x0A => {
                 let mut key = 0u8;
-                if input_is_any_key_down(&mut key) {
+                if self.driver.borrow_mut().input_is_any_key_down(&mut key) {
                     self.v[x] = key;
                 } else {
                     self.program_counter += 2;

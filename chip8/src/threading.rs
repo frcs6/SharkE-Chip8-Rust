@@ -86,9 +86,8 @@ impl ThreadRunner {
         for _i in 0..complete_tick {
             let next_clock = self.clock + self.frequency.divider;
 
-            let mut latest_processor_clock = f64::MAX;
             loop {
-                latest_processor_clock = f64::MAX;
+                let mut latest_processor_clock = f64::MAX;
 
                 for thread in self.threads.iter_mut() {
                     if thread.clock < next_clock {
