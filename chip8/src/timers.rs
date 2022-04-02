@@ -3,7 +3,7 @@ use super::threading::Processor;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-const BEEP_FREQUENCY: u16 = 800;
+const BEEP_FREQUENCY: u32 = 800;
 
 pub struct CpuTimer {
     pub value: u8,
@@ -46,7 +46,7 @@ impl SoundTimer {
     }
 
     fn do_beep(&self) {
-        let duration = 1000.0 * self.cpu_timer.value as f64 / self.frequency;
+        let duration = (1000.0 * self.cpu_timer.value as f64 / self.frequency) as u32;
         self.driver.borrow_mut().sound_do_beep(BEEP_FREQUENCY, duration);
     }
 }

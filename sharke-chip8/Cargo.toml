@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 chip8 = { path = "../chip8" }
 sdl2 = "0.35.2"
+winconsole = "0.11"

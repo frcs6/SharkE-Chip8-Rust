@@ -22,19 +22,19 @@ impl FakeDriver {
 }
 
 impl Driver for FakeDriver {
-    fn sound_do_beep(&mut self, frequency: u16, duration: f64) {}
+    fn sound_do_beep(&mut self, _frequency: u32, _duration: u32) {}
 
-    fn video_fill_buffer(&mut self, display: &Vec<Vec<usize>>) {}
+    fn video_fill_buffer(&mut self, _display: &Vec<Vec<usize>>) {}
 
-    fn input_is_key_down(&mut self, key: u8) -> bool {
+    fn input_is_key_down(&mut self, _key: u8) -> bool {
         return false;
     }
 
-    fn input_is_key_up(&mut self, key: u8) -> bool {
+    fn input_is_key_up(&mut self, _key: u8) -> bool {
         return true;
     }
 
-    fn input_is_any_key_down(&mut self, key: &mut u8) -> bool {
+    fn input_is_any_key_down(&mut self, _key: &mut u8) -> bool {
         return false;
     }
 }
