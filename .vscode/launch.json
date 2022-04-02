@@ -53,7 +53,7 @@
                     "kind": "bin"
                 }
             },
-            "args": [],
+            "args": ["../test_roms/test_opcode.ch8"],
             "cwd": "${workspaceFolder}/sharke-chip8"
         },
         {

@@ -114,7 +114,6 @@ impl Sd2lDriver {
             .create_texture_from_surface(surface)
             .unwrap();
 
-        // TODO
         let screen_rect = sdl2::rect::Rect::new(0, 0, SCREEN_W, SCREEN_H);
         let zoom = (SCREEN_H / Y_SIZE as u32).min(SCREEN_W / X_SIZE as u32) as i32;
         let texture_rect = sdl2::rect::Rect::new(
@@ -123,7 +122,6 @@ impl Sd2lDriver {
             zoom as u32 * X_SIZE as u32,
             zoom as u32 * Y_SIZE as u32,
         );
-        // TODO
 
         canvas.copy(&texture, screen_rect, texture_rect).unwrap();
     }

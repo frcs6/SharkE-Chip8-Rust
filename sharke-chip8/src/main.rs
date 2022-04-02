@@ -1,5 +1,6 @@
 mod sdl2_drivers;
 
+use std::env;
 use chip8::cpu::Cpu;
 use chip8::threading::*;
 use chip8::timers::*;
@@ -14,10 +15,11 @@ const CPU_FREQ: f64 = 500.0;
 const TIMER_FREQ: f64 = 60.0;
 
 fn main() {
-    run("../test_roms/test_opcode.ch8");
+    let args: Vec<String> = env::args().collect();
+    run(&args[1]);
 }
 
-fn run(rom_path: &str) {
+fn run(rom_path: &String) {
     let driver = Rc::new(RefCell::new(Sd2lDriver::new()));
 
     let delay_timer = Rc::new(RefCell::new(CpuTimer::new()));
