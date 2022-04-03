@@ -1,0 +1,110 @@
+name: 'Build - Release'
+
+on: 
+  push:  
+    branches: 'main'
+    tags: 'v*'    
+  pull_request:
+    branches: 'main'
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      matrix:
+        os: [windows]
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Run tests
+      run: cargo test
+
+    - name: Build artifact
+      run: cargo build --release
+
+    - name: Copy artifact
+      run: |
+        mkdir ./artifact
+        cp ./target/release/*.exe ./artifact/
+        cp ./extdeps/SDL2-2.0.20-win32-x64/*.* ./artifact/
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v1
+      with:
+        name: SharkE-Chip8-Rust-${{ matrix.os }}
+        path: ./artifact
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Get the version
+      id: get_version
+      run: echo ::set-output name=version::$(echo ${{ github.ref }} | cut -d / -f 3)
+
+    - name: Create release
+      uses: actions/create-release@latest
+      id: create_release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ steps.get_version.outputs.version }}
+        draft: true
+        prerelease: false
+
+    - name: Output Release URL File
+      run: echo "${{ steps.create_release.outputs.upload_url }}" > release_url.txt
+
+    - name: Save Release URL File for publish
+      uses: actions/upload-artifact@v1
+      with:
+        name: release_url
+        path: release_url.txt
+    
+  publish:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: release
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [windows]
+
+    steps:
+    - name: Load Release URL File from release job
+      uses: actions/download-artifact@v1
+      with:
+        name: release_url
+
+    - name: Get Release File Name & Upload URL
+      id: get_release_info
+      run: |
+        value=`cat release_url/release_url.txt`
+        echo ::set-output name=upload_url::$value
+      env:
+        TAG_REF_NAME: ${{ github.ref }}
+        REPOSITORY_NAME: ${{ github.repository }}
+
+    - name: Download artifact
+      uses: actions/download-artifact@v1
+      with:
+        name: SharkE-Chip8-Rust-${{ matrix.os }}
+        path: ./SharkE-Chip8-Rust-${{ matrix.os }}
+
+    - name: Zip artifact
+      run: zip -r SharkE-Chip8-Rust-${{ matrix.os }}.zip .
+      working-directory: ./SharkE-Chip8-Rust-${{ matrix.os }}
+
+    - name: Upload release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.get_release_info.outputs.upload_url }}
+        asset_path: ./SharkE-Chip8-Rust-${{ matrix.os }}/SharkE-Chip8-Rust-${{ matrix.os }}.zip
+        asset_name: SharkE-Chip8-Rust-${{ matrix.os }}.zip
+        asset_content_type: application/zip
