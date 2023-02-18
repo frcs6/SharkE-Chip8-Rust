@@ -4,7 +4,7 @@
 
 This is a Chip8 emulator implemented in Rust using [SDL](https://www.libsdl.org/) render. [SDL](https://www.libsdl.org/) mapping use [rust-sdl2](https://github.com/Rust-SDL2/rust-sdl2).
 
-*Workflow build only Windows executable*
+*Only Windows executable has sound driver implemented*
 
 ## Command line arguments
 

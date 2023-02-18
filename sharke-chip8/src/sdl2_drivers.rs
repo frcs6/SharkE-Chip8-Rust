@@ -128,8 +128,13 @@ impl Sd2lDriver {
 }
 
 impl Driver for Sd2lDriver {
+    #[cfg(target_os = "windows")]
     fn sound_do_beep(&mut self, frequency: u32, duration: u32) {
         winconsole::console::beep(frequency, duration);
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    fn sound_do_beep(&mut self, _frequency: u32, _duration: u32) {
     }
 
     fn video_fill_buffer(&mut self, display: &Vec<Vec<usize>>) {
